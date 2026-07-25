@@ -1,0 +1,10 @@
+# Placeholder Caddyfile — Phase 8
+# *.devtunnel.app → tunnel server
+
+# {
+#   email admin@devtunnel.app
+# }
+#
+# *.devtunnel.app {
+#   reverse_proxy server:4000
+# }
