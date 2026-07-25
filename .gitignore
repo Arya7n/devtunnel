@@ -20,6 +20,7 @@ logs/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+doc.md
 
 # OS
 .DS_Store
