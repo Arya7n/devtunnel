@@ -1,6 +1,6 @@
 # 3. Architecture
 
-## Request path
+## Request path (production target)
 
 ```
 Internet
@@ -12,6 +12,21 @@ Internet
   → Developer CLI
   → localhost:<port>
 ```
+
+## Request path (local MVP — current)
+
+```
+curl http://localhost:4000/t/<subdomain>/hello
+  → Tunnel Ingress middleware
+  → Tunnel Manager (pending request map)
+  → WebSocket `http_request` frame
+  → CLI
+  → http://127.0.0.1:<port>/hello
+  → WebSocket `http_response` frame
+  → HTTP response to curl
+```
+
+CLI connects to `ws://localhost:4000/tunnel` and sends `register_tunnel`.
 
 ## Monorepo layout
 

@@ -37,3 +37,17 @@ Connection: `ws(s)://<server>/tunnel`
 | `force_close` | `{ reason }` |
 
 Bodies are base64 to safely carry binary over JSON frames (MVP). Streaming may come later.
+
+## Helpers
+
+`@devtunnel/protocol` exports:
+
+- `createEnvelope(type, payload, id?)`
+- `parseEnvelope(raw)`
+- `serializeEnvelope(envelope)`
+- `generateId()`
+
+## Local MVP notes
+
+- `auth` is accepted with any token and answered with `auth_ok` (real auth in Phase 6)
+- `tunnel_ready.publicUrl` looks like `http://localhost:4000/t/<subdomain>` until DNS/HTTPS exists

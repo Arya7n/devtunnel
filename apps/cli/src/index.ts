@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { exposeTunnel } from './tunnel-client';
 
 const program = new Command();
 
@@ -10,12 +11,28 @@ program
 
 program
   .command('expose')
-  .description('Expose a local port via a public HTTPS URL')
+  .description('Expose a local port via a public URL')
   .argument('<port>', 'Local port to expose')
   .option('-s, --subdomain <name>', 'Request a specific subdomain')
-  .action((port: string) => {
-    console.log(`DevTunnel CLI scaffold — expose ${port} coming in Phase 3.`);
-    console.log('Run: pnpm --filter @devtunnel/cli build');
+  .option('--server <url>', 'Tunnel server URL', process.env.DEVTUNNEL_SERVER_URL)
+  .action(async (port: string, opts: { subdomain?: string; server?: string }) => {
+    const localPort = Number(port);
+    if (!Number.isInteger(localPort) || localPort < 1 || localPort > 65535) {
+      console.error('Port must be an integer between 1 and 65535');
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      await exposeTunnel({
+        localPort,
+        subdomain: opts.subdomain,
+        serverUrl: opts.server,
+      });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
   });
 
 program
@@ -29,7 +46,9 @@ program
   .command('status')
   .description('Show active tunnel status')
   .action(() => {
-    console.log('Status — coming in Phase 3.');
+    console.log('Status — not implemented yet. The expose command prints live request logs.');
   });
 
-program.parse();
+// pnpm run forwards a bare "--" which would make Commander treat later flags as operands
+const argv = process.argv.filter((arg, index) => index < 2 || arg !== '--');
+program.parseAsync(argv);

@@ -1,7 +1,10 @@
 # DevTunnel Documentation
 
+> **Start here if resuming work:** [STATUS.md](./STATUS.md) — current phase, what works, what to do next.
+
 | # | Document | Status |
 |---|----------|--------|
+| — | [**STATUS (living)**](./STATUS.md) | Active |
 | 1 | [Vision](./01-vision.md) | Draft |
 | 2 | [Requirements](./02-requirements.md) | Draft |
 | 3 | [Architecture](./03-architecture.md) | Draft |

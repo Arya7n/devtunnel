@@ -1,9 +1,54 @@
 import { Injectable } from '@nestjs/common';
+import type WebSocket from 'ws';
 
-/**
- * In-memory / Redis registry of subdomain → tunnel mappings.
- */
+export interface ActiveTunnel {
+  tunnelId: string;
+  subdomain: string;
+  localPort: number;
+  socket: WebSocket;
+  createdAt: Date;
+}
+
 @Injectable()
 export class TunnelRegistryService {
-  // Placeholder — Phase 4
+  private readonly bySubdomain = new Map<string, ActiveTunnel>();
+  private readonly bySocket = new Map<WebSocket, ActiveTunnel>();
+
+  register(tunnel: ActiveTunnel): void {
+    const existing = this.bySubdomain.get(tunnel.subdomain);
+    if (existing && existing.socket !== tunnel.socket) {
+      try {
+        existing.socket.close();
+      } catch {
+        // ignore
+      }
+      this.bySocket.delete(existing.socket);
+    }
+
+    this.bySubdomain.set(tunnel.subdomain, tunnel);
+    this.bySocket.set(tunnel.socket, tunnel);
+  }
+
+  getBySubdomain(subdomain: string): ActiveTunnel | undefined {
+    return this.bySubdomain.get(subdomain);
+  }
+
+  getBySocket(socket: WebSocket): ActiveTunnel | undefined {
+    return this.bySocket.get(socket);
+  }
+
+  removeBySocket(socket: WebSocket): ActiveTunnel | undefined {
+    const tunnel = this.bySocket.get(socket);
+    if (!tunnel) return undefined;
+    this.bySocket.delete(socket);
+    const current = this.bySubdomain.get(tunnel.subdomain);
+    if (current?.socket === socket) {
+      this.bySubdomain.delete(tunnel.subdomain);
+    }
+    return tunnel;
+  }
+
+  list(): ActiveTunnel[] {
+    return [...this.bySubdomain.values()];
+  }
 }

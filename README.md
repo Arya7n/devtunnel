@@ -53,4 +53,16 @@ See [docs/](./docs/README.md) for vision, architecture, protocol, and roadmap.
 
 ## Status
 
-**Phase 2 — Architecture & scaffold.** Feature work starts next (CLI → Tunnel Engine → Dashboard).
+**Phase 3–4 — Local tunnel MVP.** CLI can expose a port; server forwards HTTP over WebSocket.
+
+See **[docs/STATUS.md](./docs/STATUS.md)** for what works, how to test, and what to build next.
+
+### Local tunnel smoke test
+
+```bash
+pnpm --filter @devtunnel/shared build && pnpm --filter @devtunnel/protocol build
+pnpm --filter @devtunnel/server dev
+# other terminal: local app on :3000
+pnpm --filter @devtunnel/cli dev -- expose 3000
+curl http://localhost:4000/t/<subdomain>/
+```
