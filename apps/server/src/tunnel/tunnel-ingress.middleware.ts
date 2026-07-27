@@ -99,7 +99,7 @@ export class TunnelIngressMiddleware implements NestMiddleware {
           error: 'Tunnel disconnected',
           detail: error.message,
           requestId: error.requestId,
-        });
+        }); 
         this.logger.warn(
           `[${error.requestId}] ${req.method} ${subdomain}${forwardPath}${query} -> 502 (${error.message})`,
         );
