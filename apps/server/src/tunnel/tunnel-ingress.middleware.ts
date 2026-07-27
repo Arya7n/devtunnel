@@ -1,7 +1,12 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { TUNNEL_HTTP_PREFIX } from '@devtunnel/shared';
 import type { NextFunction, Request, Response } from 'express';
-import { TunnelManagerService, TunnelNotFoundError } from './tunnel-manager.service';
+import {
+  TunnelManagerService,
+  TunnelDisconnectedError,
+  TunnelForwardTimeoutError,
+  TunnelNotFoundError,
+} from './tunnel-manager.service';
 
 const HOP_BY_HOP = new Set([
   'connection',
@@ -32,6 +37,7 @@ export class TunnelIngressMiddleware implements NestMiddleware {
   }
 
   private async handle(req: Request, res: Response): Promise<void> {
+    const startedAt = Date.now();
     const remainder = req.path.slice(TUNNEL_HTTP_PREFIX.length + 1);
     const slash = remainder.indexOf('/');
     const subdomain = slash === -1 ? remainder : remainder.slice(0, slash);
@@ -65,9 +71,38 @@ export class TunnelIngressMiddleware implements NestMiddleware {
       } else {
         res.end();
       }
+
+      this.logger.log(
+        `[${response.requestId}] ${req.method} ${subdomain}${forwardPath}${query} -> ${response.status} (${Date.now() - startedAt}ms)`,
+      );
     } catch (error) {
       if (error instanceof TunnelNotFoundError) {
         res.status(404).json({ error: error.message });
+        this.logger.warn(`${req.method} ${subdomain}${forwardPath}${query} -> 404 (${error.message})`);
+        return;
+      }
+
+      if (error instanceof TunnelForwardTimeoutError) {
+        res.status(504).json({
+          error: 'Gateway timeout',
+          detail: error.message,
+          requestId: error.requestId,
+        });
+        this.logger.warn(
+          `[${error.requestId}] ${req.method} ${subdomain}${forwardPath}${query} -> 504 (${Date.now() - startedAt}ms)`,
+        );
+        return;
+      }
+
+      if (error instanceof TunnelDisconnectedError) {
+        res.status(502).json({
+          error: 'Tunnel disconnected',
+          detail: error.message,
+          requestId: error.requestId,
+        });
+        this.logger.warn(
+          `[${error.requestId}] ${req.method} ${subdomain}${forwardPath}${query} -> 502 (${error.message})`,
+        );
         return;
       }
 

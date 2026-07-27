@@ -48,6 +48,7 @@ export class TunnelWsService implements OnModuleDestroy {
       switch (envelope.type) {
         case 'auth':
           // Auth is deferred to Phase 6 — accept all connections for local MVP
+          this.logger.log('CLI authenticated with local-dev stub token');
           this.send(socket, createEnvelope('auth_ok', {}, envelope.id));
           break;
         case 'register_tunnel':
@@ -117,7 +118,7 @@ export class TunnelWsService implements OnModuleDestroy {
       ),
     );
 
-    this.logger.log(`Tunnel ready: ${publicUrl} → localhost:${payload.localPort}`);
+    this.logger.log(`Tunnel ready [${tunnelId}]: ${publicUrl} -> localhost:${payload.localPort}`);
   }
 
   private onClose(socket: WebSocket): void {

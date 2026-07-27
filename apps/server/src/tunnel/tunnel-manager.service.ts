@@ -14,6 +14,11 @@ interface PendingRequest {
   resolve: (response: HttpResponsePayload) => void;
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
+  socket: WebSocket;
+  subdomain: string;
+  method: string;
+  path: string;
+  startedAt: number;
 }
 
 @Injectable()
@@ -31,6 +36,10 @@ export class TunnelManagerService {
     }
     clearTimeout(pending.timer);
     this.pending.delete(payload.requestId);
+    const durationMs = Date.now() - pending.startedAt;
+    this.logger.log(
+      `[${payload.requestId}] ${pending.method} ${pending.subdomain}${pending.path} -> ${payload.status} (${durationMs}ms)`,
+    );
     pending.resolve(payload);
   }
 
@@ -50,12 +59,25 @@ export class TunnelManagerService {
     return new Promise<HttpResponsePayload>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
-        reject(new Error(`Tunnel response timed out after ${HTTP_FORWARD_TIMEOUT_MS}ms`));
+        this.logger.warn(
+          `[${requestId}] ${input.method} ${subdomain}${input.path} timed out after ${HTTP_FORWARD_TIMEOUT_MS}ms`,
+        );
+        reject(new TunnelForwardTimeoutError(requestId, subdomain, input.method, input.path));
       }, HTTP_FORWARD_TIMEOUT_MS);
 
-      this.pending.set(requestId, { resolve, reject, timer });
+      this.pending.set(requestId, {
+        resolve,
+        reject,
+        timer,
+        socket: tunnel.socket,
+        subdomain,
+        method: input.method,
+        path: input.path,
+        startedAt: Date.now(),
+      });
 
       try {
+        this.logger.log(`[${requestId}] Forwarding ${input.method} ${subdomain}${input.path}`);
         this.send(tunnel.socket, envelope);
       } catch (error) {
         clearTimeout(timer);
@@ -66,14 +88,16 @@ export class TunnelManagerService {
   }
 
   rejectPendingForSocket(socket: WebSocket, reason: string): void {
-    const tunnel = this.registry.getBySocket(socket);
-    if (!tunnel) return;
-
     for (const [requestId, pending] of this.pending) {
-      // Best-effort: reject all pending when any socket drops (MVP single-tunnel-per-connection)
+      if (pending.socket !== socket) continue;
       clearTimeout(pending.timer);
       this.pending.delete(requestId);
-      pending.reject(new Error(reason));
+      this.logger.warn(
+        `[${requestId}] ${pending.method} ${pending.subdomain}${pending.path} aborted: ${reason}`,
+      );
+      pending.reject(
+        new TunnelDisconnectedError(requestId, pending.subdomain, pending.method, pending.path, reason),
+      );
     }
   }
 
@@ -89,5 +113,30 @@ export class TunnelNotFoundError extends Error {
   constructor(subdomain: string) {
     super(`No active tunnel for subdomain "${subdomain}"`);
     this.name = 'TunnelNotFoundError';
+  }
+}
+
+export class TunnelForwardTimeoutError extends Error {
+  constructor(
+    public readonly requestId: string,
+    public readonly subdomain: string,
+    public readonly method: string,
+    public readonly path: string,
+  ) {
+    super(`Tunnel response timed out after ${HTTP_FORWARD_TIMEOUT_MS}ms`);
+    this.name = 'TunnelForwardTimeoutError';
+  }
+}
+
+export class TunnelDisconnectedError extends Error {
+  constructor(
+    public readonly requestId: string,
+    public readonly subdomain: string,
+    public readonly method: string,
+    public readonly path: string,
+    reason: string,
+  ) {
+    super(reason);
+    this.name = 'TunnelDisconnectedError';
   }
 }

@@ -129,10 +129,13 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
             }
             case 'http_request': {
               const request = envelope.payload as HttpRequestPayload;
+              const startedAt = Date.now();
               try {
                 const response = await proxyToLocalhost(localPort, request);
                 socket.send(serializeEnvelope(createEnvelope('http_response', response)));
-                console.log(`${request.method} ${request.path} -> ${response.status}`);
+                console.log(
+                  `[${request.requestId}] ${request.method} ${request.path} -> ${response.status} (${Date.now() - startedAt}ms)`,
+                );
               } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 socket.send(
@@ -147,7 +150,9 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
                     }),
                   ),
                 );
-                console.error(`Forward error ${request.method} ${request.path}: ${message}`);
+                console.error(
+                  `[${request.requestId}] Forward error ${request.method} ${request.path}: ${message}`,
+                );
               }
               break;
             }
