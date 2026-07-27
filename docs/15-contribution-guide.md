@@ -17,6 +17,8 @@ pnpm --filter @devtunnel/dashboard dev
 pnpm --filter @devtunnel/cli dev
 ```
 
+Dashboard runs on `http://localhost:3300`.
+
 ## Conventions
 
 - TypeScript strict mode

@@ -9,6 +9,7 @@ import {
 import { HTTP_FORWARD_TIMEOUT_MS } from '@devtunnel/shared';
 import type WebSocket from 'ws';
 import { TunnelRegistryService } from './tunnel-registry.service';
+import { RequestLogService } from './request-log.service';
 
 interface PendingRequest {
   resolve: (response: HttpResponsePayload) => void;
@@ -26,7 +27,10 @@ export class TunnelManagerService {
   private readonly logger = new Logger(TunnelManagerService.name);
   private readonly pending = new Map<string, PendingRequest>();
 
-  constructor(private readonly registry: TunnelRegistryService) {}
+  constructor(
+    private readonly registry: TunnelRegistryService,
+    private readonly requestLog: RequestLogService,
+  ) {}
 
   resolveHttpResponse(payload: HttpResponsePayload): void {
     const pending = this.pending.get(payload.requestId);
@@ -40,6 +44,15 @@ export class TunnelManagerService {
     this.logger.log(
       `[${payload.requestId}] ${pending.method} ${pending.subdomain}${pending.path} -> ${payload.status} (${durationMs}ms)`,
     );
+    this.requestLog.push({
+      requestId: payload.requestId,
+      subdomain: pending.subdomain,
+      method: pending.method,
+      path: pending.path,
+      status: payload.status,
+      durationMs,
+      timestamp: Date.now(),
+    });
     pending.resolve(payload);
   }
 

@@ -25,6 +25,13 @@ export async function exposeTunnel(options: ExposeOptions): Promise<void> {
   await connectWithRetry(wsUrl, options);
 }
 
+class FatalTunnelError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FatalTunnelError';
+  }
+}
+
 async function connectWithRetry(wsUrl: string, options: ExposeOptions): Promise<void> {
   let attempt = 0;
 
@@ -33,6 +40,11 @@ async function connectWithRetry(wsUrl: string, options: ExposeOptions): Promise<
       await runSession(wsUrl, options);
       return;
     } catch (error) {
+      if (error instanceof FatalTunnelError) {
+        console.error(`Fatal: ${error.message}`);
+        process.exitCode = 1;
+        return;
+      }
       attempt += 1;
       const delay = Math.min(1000 * 2 ** Math.min(attempt, 5), 15_000);
       const message = error instanceof Error ? error.message : String(error);
@@ -124,7 +136,7 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
                 'message' in envelope.payload
                   ? String((envelope.payload as { message: string }).message)
                   : 'Tunnel error';
-              settleErr(new Error(message));
+              settleErr(new FatalTunnelError(message));
               break;
             }
             case 'http_request': {

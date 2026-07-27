@@ -14,3 +14,5 @@ Next.js developer dashboard for DevTunnel.
 ```bash
 pnpm --filter @devtunnel/dashboard dev
 ```
+
+Runs on `http://localhost:3300`.

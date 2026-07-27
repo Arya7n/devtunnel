@@ -43,7 +43,7 @@ pnpm --filter @devtunnel/cli dev
 
 | Service | URL |
 |---------|-----|
-| Dashboard | http://localhost:3000 |
+| Dashboard | http://localhost:3300 |
 | Server | http://localhost:4000 |
 | Health | http://localhost:4000/health |
 

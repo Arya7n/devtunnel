@@ -17,12 +17,7 @@ export class TunnelRegistryService {
   register(tunnel: ActiveTunnel): void {
     const existing = this.bySubdomain.get(tunnel.subdomain);
     if (existing && existing.socket !== tunnel.socket) {
-      try {
-        existing.socket.close();
-      } catch {
-        // ignore
-      }
-      this.bySocket.delete(existing.socket);
+      throw new SubdomainTakenError(tunnel.subdomain);
     }
 
     this.bySubdomain.set(tunnel.subdomain, tunnel);
@@ -50,5 +45,12 @@ export class TunnelRegistryService {
 
   list(): ActiveTunnel[] {
     return [...this.bySubdomain.values()];
+  }
+}
+
+export class SubdomainTakenError extends Error {
+  constructor(subdomain: string) {
+    super(`Subdomain "${subdomain}" is already in use by another tunnel`);
+    this.name = 'SubdomainTakenError';
   }
 }

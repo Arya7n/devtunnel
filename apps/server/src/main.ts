@@ -4,6 +4,7 @@ import { TunnelWsService } from './tunnel/tunnel-ws.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  app.enableCors({ origin: true, credentials: true });
   const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 
   await app.listen(port);

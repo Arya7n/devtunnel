@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
+import { TunnelModule } from '../tunnel/tunnel.module';
+import { DashboardApiController } from './dashboard-api.controller';
 
-/**
- * REST API consumed by the dashboard UI.
- * Request logs, tunnel status, account endpoints.
- */
-@Module({})
+@Module({
+  imports: [TunnelModule],
+  controllers: [DashboardApiController],
+})
 export class DashboardApiModule {}
