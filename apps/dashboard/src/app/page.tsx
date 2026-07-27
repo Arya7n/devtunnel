@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { api, type RequestEntry, type TunnelInfo, type Stats } from '../lib/api';
 
 function StatusDot({ ok }: { ok: boolean }) {
@@ -52,7 +53,15 @@ function timeAgo(ts: number): string {
   return `${Math.floor(seconds / 3600)}h ago`;
 }
 
-function TunnelsSection({ tunnels }: { tunnels: TunnelInfo[] }) {
+function TunnelsSection({
+  tunnels,
+  selectedSubdomain,
+  onSelectSubdomain,
+}: {
+  tunnels: TunnelInfo[];
+  selectedSubdomain?: string;
+  onSelectSubdomain: (subdomain: string) => void;
+}) {
   if (tunnels.length === 0) {
     return (
       <div className="rounded-lg border border-white/5 bg-[var(--surface)] p-6 text-center text-[var(--muted)]">
@@ -70,7 +79,15 @@ function TunnelsSection({ tunnels }: { tunnels: TunnelInfo[] }) {
       {tunnels.map((t) => (
         <div
           key={t.tunnelId}
-          className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-white/5 bg-[var(--surface)] px-4 py-3"
+          role="button"
+          tabIndex={0}
+          onClick={() => onSelectSubdomain(t.subdomain)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onSelectSubdomain(t.subdomain);
+          }}
+          className={`flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border bg-[var(--surface)] px-4 py-3 transition-colors ${
+            selectedSubdomain === t.subdomain ? 'border-[var(--accent)]' : 'border-white/5 hover:border-white/10'
+          }`}
         >
           <StatusDot ok />
           <span className="font-mono text-sm text-[var(--accent)]">{t.subdomain}</span>
@@ -141,7 +158,19 @@ export default function DashboardPage() {
   const health = useQuery({ queryKey: ['health'], queryFn: api.health });
   const stats = useQuery({ queryKey: ['stats'], queryFn: api.stats });
   const tunnels = useQuery({ queryKey: ['tunnels'], queryFn: api.tunnels });
-  const requests = useQuery({ queryKey: ['requests'], queryFn: () => api.requests() });
+  const [selectedSubdomain, setSelectedSubdomain] = useState<string | undefined>(undefined);
+
+  // Pick the first tunnel once data arrives, so the request log isn’t empty by default.
+  useEffect(() => {
+    if (!selectedSubdomain && tunnels.data && tunnels.data.length > 0) {
+      setSelectedSubdomain(tunnels.data[0].subdomain);
+    }
+  }, [selectedSubdomain, tunnels.data]);
+
+  const requests = useQuery({
+    queryKey: ['requests', selectedSubdomain ?? 'all'],
+    queryFn: () => api.requests(selectedSubdomain),
+  });
 
   const serverUp = health.data?.status === 'ok';
   const s: Stats = stats.data ?? { activeTunnels: 0, totalRequests: 0, requestsLastMinute: 0, avgDurationMs: 0 };
@@ -170,7 +199,11 @@ export default function DashboardPage() {
         <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[var(--muted)]">
           Active Tunnels
         </h2>
-        <TunnelsSection tunnels={tunnels.data ?? []} />
+        <TunnelsSection
+          tunnels={tunnels.data ?? []}
+          selectedSubdomain={selectedSubdomain}
+          onSelectSubdomain={setSelectedSubdomain}
+        />
       </section>
 
       {/* Request Log */}
@@ -178,6 +211,15 @@ export default function DashboardPage() {
         <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[var(--muted)]">
           Recent Requests
         </h2>
+        <p className="mb-3 text-xs text-[var(--muted)]">
+          {selectedSubdomain ? (
+            <>
+              Filtering by subdomain: <span className="font-mono text-[var(--accent)]">{selectedSubdomain}</span>
+            </>
+          ) : (
+            <>Showing requests across all tunnels</>
+          )}
+        </p>
         <div className="rounded-lg border border-white/5 bg-[var(--surface)] p-4">
           <RequestsTable requests={requests.data ?? []} />
         </div>
