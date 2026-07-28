@@ -94,9 +94,86 @@ export class AuthService {
       const user = await this.getUserById(payload.sub);
       if (!user) throw new UnauthorizedException('User not found');
       return user;
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Invalid access token');
     }
+  }
+
+  /** Accept either a JWT access token or a `dt_...` API key. */
+  async validateCredential(token: string): Promise<AuthUser> {
+    if (token.startsWith('dt_')) {
+      return this.validateApiKey(token);
+    }
+    return this.verifyAccessToken(token);
+  }
+
+  async createApiKey(userId: string, label = 'default') {
+    const rawKey = `dt_${randomBytes(24).toString('base64url')}`;
+    const keyHash = this.hashToken(rawKey);
+    const keyPrefix = rawKey.slice(0, 10);
+
+    const record = await this.prisma.apiKey.create({
+      data: { userId, label, keyPrefix, keyHash },
+    });
+
+    return {
+      id: record.id,
+      label: record.label,
+      keyPrefix: record.keyPrefix,
+      createdAt: record.createdAt.toISOString(),
+      key: rawKey,
+    };
+  }
+
+  async listApiKeys(userId: string) {
+    const keys = await this.prisma.apiKey.findMany({
+      where: { userId, revokedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return keys.map((key) => ({
+      id: key.id,
+      label: key.label,
+      keyPrefix: key.keyPrefix,
+      createdAt: key.createdAt.toISOString(),
+      lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
+    }));
+  }
+
+  async revokeApiKey(userId: string, keyId: string) {
+    const key = await this.prisma.apiKey.findFirst({
+      where: { id: keyId, userId, revokedAt: null },
+    });
+    if (!key) {
+      throw new UnauthorizedException('API key not found');
+    }
+
+    await this.prisma.apiKey.update({
+      where: { id: key.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return { revoked: true };
+  }
+
+  async validateApiKey(rawKey: string): Promise<AuthUser> {
+    const keyHash = this.hashToken(rawKey);
+    const key = await this.prisma.apiKey.findUnique({
+      where: { keyHash },
+      include: { user: true },
+    });
+
+    if (!key || key.revokedAt) {
+      throw new UnauthorizedException('Invalid API key');
+    }
+
+    await this.prisma.apiKey.update({
+      where: { id: key.id },
+      data: { lastUsedAt: new Date() },
+    });
+
+    return this.toAuthUser(key.user);
   }
 
   private async issueTokens(userId: string, email: string): Promise<AuthTokens> {

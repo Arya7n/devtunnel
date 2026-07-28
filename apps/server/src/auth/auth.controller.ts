@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { AuthService, type AuthUser } from './auth.service';
+import { CreateApiKeyDto } from './dto/api-key.dto';
 import { LoginDto, RefreshDto, RegisterDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import type { AuthUser } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -28,5 +28,23 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return { user };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('api-keys')
+  createApiKey(@CurrentUser() user: AuthUser, @Body() body: CreateApiKeyDto) {
+    return this.auth.createApiKey(user.id, body.label ?? 'default');
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('api-keys')
+  listApiKeys(@CurrentUser() user: AuthUser) {
+    return this.auth.listApiKeys(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('api-keys/:id')
+  revokeApiKey(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.auth.revokeApiKey(user.id, id);
   }
 }
