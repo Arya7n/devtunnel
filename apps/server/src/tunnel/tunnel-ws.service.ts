@@ -4,23 +4,27 @@ import {
   generateId,
   parseEnvelope,
   serializeEnvelope,
+  type AuthPayload,
   type HttpResponsePayload,
   type RegisterTunnelPayload,
 } from '@devtunnel/protocol';
 import { DEFAULT_WS_PATH, TUNNEL_HTTP_PREFIX } from '@devtunnel/shared';
 import type { Server as HttpServer } from 'http';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
+import { AuthService, type AuthUser } from '../auth/auth.service';
 import { TunnelManagerService } from './tunnel-manager.service';
-import { TunnelRegistryService } from './tunnel-registry.service';
+import { SubdomainTakenError, TunnelRegistryService } from './tunnel-registry.service';
 
 @Injectable()
 export class TunnelWsService implements OnModuleDestroy {
   private readonly logger = new Logger(TunnelWsService.name);
   private wss?: WebSocketServer;
+  private readonly authedUsers = new Map<WebSocket, AuthUser>();
 
   constructor(
     private readonly registry: TunnelRegistryService,
     private readonly manager: TunnelManagerService,
+    private readonly auth: AuthService,
   ) {}
 
   attach(server: HttpServer): void {
@@ -28,7 +32,9 @@ export class TunnelWsService implements OnModuleDestroy {
 
     this.wss.on('connection', (socket, request) => {
       this.logger.log(`CLI connected from ${request.socket.remoteAddress ?? 'unknown'}`);
-      socket.on('message', (raw) => this.onMessage(socket, raw));
+      socket.on('message', (raw) => {
+        void this.onMessage(socket, raw);
+      });
       socket.on('close', () => this.onClose(socket));
       socket.on('error', (error) => {
         this.logger.warn(`Socket error: ${error.message}`);
@@ -42,14 +48,12 @@ export class TunnelWsService implements OnModuleDestroy {
     this.wss?.close();
   }
 
-  private onMessage(socket: WebSocket, raw: RawData): void {
+  private async onMessage(socket: WebSocket, raw: RawData): Promise<void> {
     try {
       const envelope = parseEnvelope(raw as Buffer);
       switch (envelope.type) {
         case 'auth':
-          // Auth is deferred to Phase 6 — accept all connections for local MVP
-          this.logger.log('CLI authenticated with local-dev stub token');
-          this.send(socket, createEnvelope('auth_ok', {}, envelope.id));
+          await this.handleAuth(socket, envelope.payload as AuthPayload, envelope.id);
           break;
         case 'register_tunnel':
           this.handleRegister(socket, envelope.payload as RegisterTunnelPayload, envelope.id);
@@ -79,11 +83,50 @@ export class TunnelWsService implements OnModuleDestroy {
     }
   }
 
+  private async handleAuth(
+    socket: WebSocket,
+    payload: AuthPayload,
+    correlationId: string,
+  ): Promise<void> {
+    try {
+      if (!payload?.token) {
+        throw new Error('token is required');
+      }
+      const user = await this.auth.validateCredential(payload.token);
+      this.authedUsers.set(socket, user);
+      this.send(socket, createEnvelope('auth_ok', { userId: user.id, email: user.email }, correlationId));
+      this.logger.log(`CLI authenticated as ${user.email}`);
+    } catch (error) {
+      this.send(
+        socket,
+        createEnvelope(
+          'auth_error',
+          { message: error instanceof Error ? error.message : 'Authentication failed' },
+          correlationId,
+        ),
+      );
+      socket.close();
+    }
+  }
+
   private handleRegister(
     socket: WebSocket,
     payload: RegisterTunnelPayload,
     correlationId: string,
   ): void {
+    const user = this.authedUsers.get(socket);
+    if (!user) {
+      this.send(
+        socket,
+        createEnvelope(
+          'tunnel_error',
+          { message: 'Authenticate before registering a tunnel' },
+          correlationId,
+        ),
+      );
+      return;
+    }
+
     if (!payload || typeof payload.localPort !== 'number') {
       this.send(
         socket,
@@ -96,32 +139,46 @@ export class TunnelWsService implements OnModuleDestroy {
       return;
     }
 
-    const subdomain = this.normalizeSubdomain(payload.subdomain) ?? this.randomSubdomain();
-    const tunnelId = generateId();
-    const baseUrl = process.env.PUBLIC_BASE_URL ?? 'http://localhost:4000';
-    const publicUrl = `${baseUrl.replace(/\/$/, '')}${TUNNEL_HTTP_PREFIX}/${subdomain}`;
+    try {
+      const subdomain = this.normalizeSubdomain(payload.subdomain) ?? this.randomSubdomain();
+      const tunnelId = generateId();
+      const baseUrl = process.env.PUBLIC_BASE_URL ?? 'http://localhost:4000';
+      const publicUrl = `${baseUrl.replace(/\/$/, '')}${TUNNEL_HTTP_PREFIX}/${subdomain}`;
 
-    this.registry.register({
-      tunnelId,
-      subdomain,
-      localPort: payload.localPort,
-      socket,
-      createdAt: new Date(),
-    });
+      this.registry.register({
+        tunnelId,
+        subdomain,
+        localPort: payload.localPort,
+        userId: user.id,
+        socket,
+        createdAt: new Date(),
+      });
 
-    this.send(
-      socket,
-      createEnvelope(
-        'tunnel_ready',
-        { tunnelId, subdomain, publicUrl },
-        correlationId,
-      ),
-    );
+      this.send(
+        socket,
+        createEnvelope(
+          'tunnel_ready',
+          { tunnelId, subdomain, publicUrl },
+          correlationId,
+        ),
+      );
 
-    this.logger.log(`Tunnel ready [${tunnelId}]: ${publicUrl} -> localhost:${payload.localPort}`);
+      this.logger.log(
+        `Tunnel ready [${tunnelId}] user=${user.email}: ${publicUrl} -> localhost:${payload.localPort}`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof SubdomainTakenError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to register tunnel';
+      this.send(socket, createEnvelope('tunnel_error', { message }, correlationId));
+    }
   }
 
   private onClose(socket: WebSocket): void {
+    this.authedUsers.delete(socket);
     this.manager.rejectPendingForSocket(socket, 'Tunnel disconnected');
     const removed = this.registry.removeBySocket(socket);
     if (removed) {

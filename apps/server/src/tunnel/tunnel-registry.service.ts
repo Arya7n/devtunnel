@@ -5,6 +5,7 @@ export interface ActiveTunnel {
   tunnelId: string;
   subdomain: string;
   localPort: number;
+  userId: string;
   socket: WebSocket;
   createdAt: Date;
 }
@@ -43,8 +44,9 @@ export class TunnelRegistryService {
     return tunnel;
   }
 
-  list(): ActiveTunnel[] {
-    return [...this.bySubdomain.values()];
+  list(userId?: string): ActiveTunnel[] {
+    const all = [...this.bySubdomain.values()];
+    return userId ? all.filter((t) => t.userId === userId) : all;
   }
 }
 
