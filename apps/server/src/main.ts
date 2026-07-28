@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { TunnelWsService } from './tunnel/tunnel-ws.service';
@@ -5,6 +6,13 @@ import { TunnelWsService } from './tunnel/tunnel-ws.service';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableCors({ origin: true, credentials: true });
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
   const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 
   await app.listen(port);
