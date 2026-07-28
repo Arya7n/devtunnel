@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { loginCommand, logoutCommand, registerCommand } from './auth-commands';
+import { getCredential, loadConfig } from './config';
 import { exposeTunnel } from './tunnel-client';
 
 const program = new Command();
@@ -8,6 +10,44 @@ program
   .name('devtunnel')
   .description('Securely expose localhost to the internet')
   .version('0.0.1');
+
+program
+  .command('register')
+  .description('Create a DevTunnel account')
+  .option('--server <url>', 'Tunnel server URL')
+  .action(async (opts: { server?: string }) => {
+    try {
+      await registerCommand(opts.server);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('login')
+  .description('Authenticate with DevTunnel and store an API key')
+  .option('--server <url>', 'Tunnel server URL')
+  .action(async (opts: { server?: string }) => {
+    try {
+      await loginCommand(opts.server);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('logout')
+  .description('Clear local credentials')
+  .action(async () => {
+    try {
+      await logoutCommand();
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
 
 program
   .command('expose')
@@ -24,10 +64,19 @@ program
     }
 
     try {
+      const config = await loadConfig();
+      const token = getCredential(config);
+      if (!token) {
+        console.error('Not logged in. Run: devtunnel login');
+        process.exitCode = 1;
+        return;
+      }
+
       await exposeTunnel({
         localPort,
         subdomain: opts.subdomain,
-        serverUrl: opts.server,
+        serverUrl: opts.server ?? config.serverUrl,
+        token,
       });
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
@@ -36,17 +85,17 @@ program
   });
 
 program
-  .command('login')
-  .description('Authenticate with DevTunnel')
-  .action(() => {
-    console.log('Login — coming in Phase 6.');
-  });
-
-program
   .command('status')
-  .description('Show active tunnel status')
-  .action(() => {
-    console.log('Status — not implemented yet. The expose command prints live request logs.');
+  .description('Show login / config status')
+  .action(async () => {
+    const config = await loadConfig();
+    if (!getCredential(config)) {
+      console.log('Not logged in.');
+      return;
+    }
+    console.log(`Logged in as: ${config.email ?? '(unknown)'}`);
+    console.log(`Server: ${config.serverUrl}`);
+    console.log(`Credential: ${config.apiKey ? 'API key' : 'access token'}`);
   });
 
 // pnpm run forwards a bare "--" which would make Commander treat later flags as operands

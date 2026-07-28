@@ -14,6 +14,7 @@ export interface ExposeOptions {
   localPort: number;
   subdomain?: string;
   serverUrl?: string;
+  token: string;
 }
 
 export async function exposeTunnel(options: ExposeOptions): Promise<void> {
@@ -58,6 +59,7 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(wsUrl);
     let settled = false;
+    let authenticated = false;
     const localPort = options.localPort;
 
     const cleanup = () => {
@@ -99,13 +101,7 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
     process.once('SIGTERM', onSignal);
 
     socket.on('open', () => {
-      socket.send(serializeEnvelope(createEnvelope('auth', { token: 'local-dev' })));
-
-      const payload: RegisterTunnelPayload = {
-        localPort: options.localPort,
-        subdomain: options.subdomain,
-      };
-      socket.send(serializeEnvelope(createEnvelope('register_tunnel', payload)));
+      socket.send(serializeEnvelope(createEnvelope('auth', { token: options.token })));
     });
 
     socket.on('message', (raw) => {
@@ -114,11 +110,25 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
           const envelope = parseEnvelope(raw as Buffer);
 
           switch (envelope.type) {
-            case 'auth_ok':
+            case 'auth_ok': {
+              authenticated = true;
+              const payload: RegisterTunnelPayload = {
+                localPort: options.localPort,
+                subdomain: options.subdomain,
+              };
+              socket.send(serializeEnvelope(createEnvelope('register_tunnel', payload)));
               break;
-            case 'auth_error':
-              settleErr(new Error('Authentication failed'));
+            }
+            case 'auth_error': {
+              const message =
+                typeof envelope.payload === 'object' &&
+                envelope.payload &&
+                'message' in envelope.payload
+                  ? String((envelope.payload as { message: string }).message)
+                  : 'Authentication failed';
+              settleErr(new FatalTunnelError(`${message}. Run: devtunnel login`));
               break;
+            }
             case 'tunnel_ready': {
               const ready = envelope.payload as TunnelReadyPayload;
               console.log('');
@@ -140,6 +150,7 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
               break;
             }
             case 'http_request': {
+              if (!authenticated) break;
               const request = envelope.payload as HttpRequestPayload;
               const startedAt = Date.now();
               try {
