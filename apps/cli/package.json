@@ -15,6 +15,7 @@
   "dependencies": {
     "@devtunnel/protocol": "workspace:*",
     "@devtunnel/shared": "workspace:*",
+    "@inquirer/prompts": "^8.5.2",
     "commander": "^12.1.0",
     "ws": "^8.18.0"
   },

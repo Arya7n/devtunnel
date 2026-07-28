@@ -4,22 +4,34 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@devtunnel/protocol": "workspace:*",
     "@devtunnel/shared": "workspace:*",
     "@nestjs/common": "^10.4.15",
+    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^10.4.15",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/platform-ws": "^10.4.15",
     "@nestjs/websockets": "^10.4.15",
+    "@prisma/client": "^6.19.3",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "ws": "^8.18.0"
@@ -27,9 +39,12 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
+    "@types/passport-jwt": "^4.0.1",
     "@types/ws": "^8.5.13",
+    "prisma": "^6.19.3",
     "typescript": "^5.7.2"
   }
 }

@@ -1,24 +1,20 @@
-# 4. Database Design
+# Database Design
 
-Prisma schema will live in `apps/server/prisma/schema.prisma` (Phase 7).
+Prisma schema: `apps/server/prisma/schema.prisma`
 
-## Planned entities
+## Entities (auth slice)
 
 ### User
-- id, email, passwordHash, name, createdAt
+- `id`, `email` (unique), `passwordHash`, `name?`, timestamps
 
 ### ApiKey
-- id, userId, keyHash, label, createdAt, revokedAt
+- `id`, `userId`, `label`, `keyPrefix`, `keyHash` (unique), `createdAt`, `revokedAt?`, `lastUsedAt?`
+- Plaintext key shown once at creation (`dt_...`)
 
-### Tunnel
-- id, userId, subdomain, localPort, status, createdAt, closedAt
+### RefreshToken
+- `id`, `userId`, `tokenHash`, `expiresAt`, `revokedAt?`
 
-### RequestLog
-- id, tunnelId, method, path, statusCode, durationMs, createdAt
-- optional: requestHeaders, responseHeaders (JSON)
+## Later (request persistence)
 
-## Notes
-
-- Subdomains must be unique while a tunnel is active
-- Request bodies may be truncated or sampled for storage size
-- Soft-delete / revoke for API keys
+### Tunnel / RequestLog
+- Still in-memory on the server for live dashboard; DB models TBD
