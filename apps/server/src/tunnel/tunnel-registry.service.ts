@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import type WebSocket from 'ws';
+import { TunnelRedisStore } from './tunnel-redis.store';
 
 export interface ActiveTunnel {
   tunnelId: string;
@@ -12,17 +14,51 @@ export interface ActiveTunnel {
 
 @Injectable()
 export class TunnelRegistryService {
+  private readonly logger = new Logger(TunnelRegistryService.name);
   private readonly bySubdomain = new Map<string, ActiveTunnel>();
   private readonly bySocket = new Map<WebSocket, ActiveTunnel>();
+  /** Identifies this server process in Redis metadata */
+  readonly instanceId = randomUUID();
 
-  register(tunnel: ActiveTunnel): void {
-    const existing = this.bySubdomain.get(tunnel.subdomain);
-    if (existing && existing.socket !== tunnel.socket) {
+  constructor(private readonly redisStore: TunnelRedisStore) {}
+
+  async register(tunnel: ActiveTunnel): Promise<void> {
+    const existingLocal = this.bySubdomain.get(tunnel.subdomain);
+    if (existingLocal && existingLocal.socket !== tunnel.socket) {
+      throw new SubdomainTakenError(tunnel.subdomain);
+    }
+
+    // Same socket re-register (reconnect edge case): refresh Redis + maps
+    if (existingLocal?.socket === tunnel.socket) {
+      await this.redisStore.refresh({
+        tunnelId: tunnel.tunnelId,
+        subdomain: tunnel.subdomain,
+        localPort: tunnel.localPort,
+        userId: tunnel.userId,
+        instanceId: this.instanceId,
+        createdAt: tunnel.createdAt.toISOString(),
+      });
+      this.bySubdomain.set(tunnel.subdomain, tunnel);
+      this.bySocket.set(tunnel.socket, tunnel);
+      return;
+    }
+
+    const claimed = await this.redisStore.claim({
+      tunnelId: tunnel.tunnelId,
+      subdomain: tunnel.subdomain,
+      localPort: tunnel.localPort,
+      userId: tunnel.userId,
+      instanceId: this.instanceId,
+      createdAt: tunnel.createdAt.toISOString(),
+    });
+
+    if (!claimed) {
       throw new SubdomainTakenError(tunnel.subdomain);
     }
 
     this.bySubdomain.set(tunnel.subdomain, tunnel);
     this.bySocket.set(tunnel.socket, tunnel);
+    this.logger.debug(`Registered ${tunnel.subdomain} in memory + Redis`);
   }
 
   getBySubdomain(subdomain: string): ActiveTunnel | undefined {
@@ -33,13 +69,15 @@ export class TunnelRegistryService {
     return this.bySocket.get(socket);
   }
 
-  removeBySocket(socket: WebSocket): ActiveTunnel | undefined {
+  async removeBySocket(socket: WebSocket): Promise<ActiveTunnel | undefined> {
     const tunnel = this.bySocket.get(socket);
     if (!tunnel) return undefined;
     this.bySocket.delete(socket);
     const current = this.bySubdomain.get(tunnel.subdomain);
     if (current?.socket === socket) {
       this.bySubdomain.delete(tunnel.subdomain);
+      await this.redisStore.release(tunnel.subdomain);
+      this.logger.debug(`Released ${tunnel.subdomain} from memory + Redis`);
     }
     return tunnel;
   }
@@ -47,6 +85,11 @@ export class TunnelRegistryService {
   list(userId?: string): ActiveTunnel[] {
     const all = [...this.bySubdomain.values()];
     return userId ? all.filter((t) => t.userId === userId) : all;
+  }
+
+  /** Live socket count on this instance */
+  localCount(): number {
+    return this.bySubdomain.size;
   }
 }
 

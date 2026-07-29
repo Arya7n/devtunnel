@@ -147,7 +147,7 @@ export class TunnelWsService implements OnModuleDestroy {
       const baseUrl = process.env.PUBLIC_BASE_URL ?? 'http://localhost:4000';
       const publicUrl = `${baseUrl.replace(/\/$/, '')}${TUNNEL_HTTP_PREFIX}/${subdomain}`;
 
-      this.registry.register({
+      await this.registry.register({
         tunnelId,
         subdomain,
         localPort: payload.localPort,
@@ -164,7 +164,7 @@ export class TunnelWsService implements OnModuleDestroy {
           localPort: payload.localPort,
         });
       } catch (error) {
-        this.registry.removeBySocket(socket);
+        await this.registry.removeBySocket(socket);
         throw error;
       }
 
@@ -194,8 +194,8 @@ export class TunnelWsService implements OnModuleDestroy {
   private onClose(socket: WebSocket): void {
     this.authedUsers.delete(socket);
     this.manager.rejectPendingForSocket(socket, 'Tunnel disconnected');
-    const removed = this.registry.removeBySocket(socket);
-    if (removed) {
+    void this.registry.removeBySocket(socket).then((removed) => {
+      if (!removed) return;
       this.logger.log(`Tunnel closed: ${removed.subdomain}`);
       void this.requestLog.recordTunnelClose(removed.tunnelId).catch((error) => {
         this.logger.warn(
@@ -204,7 +204,7 @@ export class TunnelWsService implements OnModuleDestroy {
           }`,
         );
       });
-    }
+    });
   }
 
   private normalizeSubdomain(value?: string): string | undefined {
