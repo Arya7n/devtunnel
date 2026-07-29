@@ -55,5 +55,7 @@ docs/          # Architecture & specs
 
 ## Data stores
 
-- **PostgreSQL** — users, tunnels, request logs
-- **Redis** — live registry, sessions, rate limits
+- **PostgreSQL** — users, API keys, tunnels, request logs
+- **Redis** — live subdomain ownership metadata (`devtunnel:tunnel:<sub>`)
+  - WebSocket connections stay in the Nest process memory
+  - On single-node startup, stale Redis tunnel keys are cleared

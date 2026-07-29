@@ -5,9 +5,9 @@
 
 ## Phase
 
-**Phase 7 in progress: Persistence (tunnels + request logs in Postgres)**
+**Phase 7 mostly done: Persistence + Redis live registry**
 
-Auth (Phase 6) works. Tunnel open/close and HTTP request logs are now written to Postgres. Live active tunnels remain in-memory until Redis.
+Auth works. Postgres stores users/keys/tunnels/request logs. Redis stores live subdomain ownership metadata. WebSocket handles remain in-process memory.
 
 ## What works now
 
@@ -17,35 +17,39 @@ Auth (Phase 6) works. Tunnel open/close and HTTP request logs are now written to
 4. WebSocket `auth` must succeed before `register_tunnel`
 5. Dashboard `/api/*` requires Bearer JWT or API key; scoped to the user
 6. Local tunnel forward: `http://localhost:4000/t/<subdomain>/...`
-7. **Postgres `Tunnel` + `RequestLog`** — request history survives server restarts
-8. Stale `active` tunnels are closed on server startup
+7. Postgres `Tunnel` + `RequestLog` — request history survives restarts
+8. **Redis registry** — subdomain claims via `devtunnel:tunnel:<subdomain>`
+9. Stale Redis keys cleared on server startup (single-node)
+10. `GET /health` reports Redis up/down + local/redis tunnel counts
 
 ## What does NOT work yet
 
-- Redis-backed registry (still in-memory for live sockets)
+- Multi-instance routing (socket still on one process; Redis is metadata only)
 - Wildcard DNS + HTTPS (Caddy)
 - Custom domains, TCP tunnels, request replay
 
-## Prerequisites
+## Prerequisites (manual)
 
 ```bash
-cp .env.example .env
-pnpm docker:up
+cp .env.example .env          # ensure REDIS_URL=redis://localhost:6379
+pnpm docker:up                # Postgres + Redis — REQUIRED
 pnpm --filter @devtunnel/server prisma:push
 ```
 
-## How to smoke-test auth + tunnel
+Docker Desktop must be running. Without Redis, the server **fails to start**.
+
+## How to smoke-test
 
 ```bash
 pnpm --filter @devtunnel/shared build
 pnpm --filter @devtunnel/protocol build
 pnpm --filter @devtunnel/server dev
 
-# CLI (use `cli` not `dev` for interactive login)
+curl http://localhost:4000/health
+# expect redis: "up"
+
 pnpm --filter @devtunnel/cli cli -- login
 pnpm --filter @devtunnel/cli cli -- expose 3000 --subdomain myapp
-
-# Dashboard (login with same account)
 pnpm --filter @devtunnel/dashboard dev
 ```
 
@@ -53,32 +57,29 @@ pnpm --filter @devtunnel/dashboard dev
 
 | Area | Path |
 |------|------|
+| Redis client | `apps/server/src/redis/` |
+| Tunnel Redis store | `apps/server/src/tunnel/tunnel-redis.store.ts` |
+| Registry (memory + Redis) | `apps/server/src/tunnel/tunnel-registry.service.ts` |
 | Prisma models | `apps/server/prisma/schema.prisma` |
-| Request/tunnel persistence | `apps/server/src/tunnel/request-log.service.ts` |
-| Auth service / routes | `apps/server/src/auth/` |
-| WS auth gate | `apps/server/src/tunnel/tunnel-ws.service.ts` |
-| Protected dashboard API | `apps/server/src/dashboard-api/` |
-| CLI config + login | `apps/cli/src/config.ts`, `auth-commands.ts` |
-| Dashboard login UI | `apps/dashboard/src/app/page.tsx` |
+| Auth | `apps/server/src/auth/` |
+| CLI config | `apps/cli/src/config.ts` |
 
 ## Next steps (in order)
 
-1. **Redis registry** for multi-instance / restart survival of live tunnels
-2. **Phase 8 Deploy** — Caddy wildcard TLS + DNS `*.devtunnel.app`
-3. Refresh tokens rotation hardening / HTTP-only cookies for dashboard (optional)
+1. **Phase 8 Deploy** — Caddy wildcard TLS + DNS `*.devtunnel.app`
+2. Multi-instance sticky routing / pub-sub (only if scaling beyond one server)
+3. Optional: HTTP-only cookies for dashboard; rate limits
 
 ## Decisions / conventions
 
 - Local public URL shape: `/t/<subdomain>/...`
-- Bodies over WS are base64 JSON frames (MVP)
-- CLI stores credentials in `~/.devtunnel/config.json` (API key preferred)
+- Redis key: `devtunnel:tunnel:<subdomain>` → JSON metadata (not the socket)
+- On startup, clear all tunnel Redis keys (single-node MVP)
+- CLI stores credentials in `~/.devtunnel/config.json`
 - Dashboard stores access token in `localStorage`
-- Auth is for the **tunnel owner** (CLI + dashboard), not for public inbound traffic
-- Request logs capped at ~1000 rows per user
-- Active tunnel list in dashboard = live in-memory registry; request history = Postgres
 
 ## If context is lost
 
 1. Read this file
-2. Read `docs/08-authentication.md` and `docs/03-architecture.md`
-3. Continue from **Next steps** above — do not re-scaffold
+2. Read `docs/03-architecture.md` and `docs/08-authentication.md`
+3. Continue from **Next steps** — do not re-scaffold
