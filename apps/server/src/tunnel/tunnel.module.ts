@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module';
 import { TunnelIngressMiddleware } from './tunnel-ingress.middleware';
 import { TunnelManagerService } from './tunnel-manager.service';
 import { TunnelRegistryService } from './tunnel-registry.service';
+import { TunnelRedisStore } from './tunnel-redis.store';
 import { TunnelWsService } from './tunnel-ws.service';
 import { RequestLogService } from './request-log.service';
 
@@ -11,11 +12,18 @@ import { RequestLogService } from './request-log.service';
   providers: [
     TunnelManagerService,
     TunnelRegistryService,
+    TunnelRedisStore,
     TunnelWsService,
     TunnelIngressMiddleware,
     RequestLogService,
   ],
-  exports: [TunnelManagerService, TunnelRegistryService, TunnelWsService, RequestLogService],
+  exports: [
+    TunnelManagerService,
+    TunnelRegistryService,
+    TunnelRedisStore,
+    TunnelWsService,
+    RequestLogService,
+  ],
 })
 export class TunnelModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
