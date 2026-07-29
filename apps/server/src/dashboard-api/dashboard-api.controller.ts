@@ -43,6 +43,8 @@ export class DashboardApiController {
       totalRequests: total,
       requestsLastMinute: recent,
       avgDurationMs,
+      redisTunnels: await this.registry.redisCount(),
+      instanceId: this.registry.instanceId,
     };
   }
 
