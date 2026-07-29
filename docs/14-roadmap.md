@@ -8,7 +8,7 @@
 | 4 | Tunnel engine (WS + HTTP forward) | Done (local MVP) |
 | 5 | Dashboard | Done (basic inspector + login) |
 | 6 | Authentication | **Done (JWT + API keys + CLI)** |
-| 7 | Persistence (request logs + Redis registry) | Partial (users/keys in Postgres) |
+| 7 | Persistence (request logs + Redis registry) | **Partial** — tunnels/logs in Postgres; Redis TBD |
 | 8 | Deployment | Not started |
 | 9 | Production hardening | Not started |
 | 10 | Scaling | Not started |

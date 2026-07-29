@@ -14,7 +14,17 @@ Prisma schema: `apps/server/prisma/schema.prisma`
 ### RefreshToken
 - `id`, `userId`, `tokenHash`, `expiresAt`, `revokedAt?`
 
-## Later (request persistence)
+## Persistence (Phase 7)
 
-### Tunnel / RequestLog
-- Still in-memory on the server for live dashboard; DB models TBD
+### Tunnel
+- `id` (tunnelId from WS), `userId`, `subdomain`, `localPort`
+- `status`: `active` | `closed`
+- `createdAt`, `closedAt?`
+- Live sockets stay in-memory; DB tracks open/close history
+- On server boot, any leftover `active` rows are marked `closed`
+
+### RequestLog
+- `requestId` (unique), `userId`, `tunnelId?`, `subdomain`
+- `method`, `path`, `status`, `durationMs`, `createdAt`
+- Dashboard `/api/requests` and `/api/stats` read from Postgres
+- Retention: keep latest ~1000 logs per user

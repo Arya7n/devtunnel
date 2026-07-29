@@ -14,6 +14,7 @@ import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { AuthService, type AuthUser } from '../auth/auth.service';
 import { TunnelManagerService } from './tunnel-manager.service';
 import { SubdomainTakenError, TunnelRegistryService } from './tunnel-registry.service';
+import { RequestLogService } from './request-log.service';
 
 @Injectable()
 export class TunnelWsService implements OnModuleDestroy {
@@ -25,6 +26,7 @@ export class TunnelWsService implements OnModuleDestroy {
     private readonly registry: TunnelRegistryService,
     private readonly manager: TunnelManagerService,
     private readonly auth: AuthService,
+    private readonly requestLog: RequestLogService,
   ) {}
 
   attach(server: HttpServer): void {
@@ -56,7 +58,7 @@ export class TunnelWsService implements OnModuleDestroy {
           await this.handleAuth(socket, envelope.payload as AuthPayload, envelope.id);
           break;
         case 'register_tunnel':
-          this.handleRegister(socket, envelope.payload as RegisterTunnelPayload, envelope.id);
+          await this.handleRegister(socket, envelope.payload as RegisterTunnelPayload, envelope.id);
           break;
         case 'http_response':
           this.manager.resolveHttpResponse(envelope.payload as HttpResponsePayload);
@@ -109,11 +111,11 @@ export class TunnelWsService implements OnModuleDestroy {
     }
   }
 
-  private handleRegister(
+  private async handleRegister(
     socket: WebSocket,
     payload: RegisterTunnelPayload,
     correlationId: string,
-  ): void {
+  ): Promise<void> {
     const user = this.authedUsers.get(socket);
     if (!user) {
       this.send(
@@ -154,6 +156,18 @@ export class TunnelWsService implements OnModuleDestroy {
         createdAt: new Date(),
       });
 
+      try {
+        await this.requestLog.recordTunnelOpen({
+          tunnelId,
+          userId: user.id,
+          subdomain,
+          localPort: payload.localPort,
+        });
+      } catch (error) {
+        this.registry.removeBySocket(socket);
+        throw error;
+      }
+
       this.send(
         socket,
         createEnvelope(
@@ -183,6 +197,13 @@ export class TunnelWsService implements OnModuleDestroy {
     const removed = this.registry.removeBySocket(socket);
     if (removed) {
       this.logger.log(`Tunnel closed: ${removed.subdomain}`);
+      void this.requestLog.recordTunnelClose(removed.tunnelId).catch((error) => {
+        this.logger.warn(
+          `Failed to persist tunnel close ${removed.tunnelId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
     }
   }
 

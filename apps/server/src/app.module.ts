@@ -8,7 +8,11 @@ import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // pnpm filter runs with cwd=apps/server; also allow monorepo root .env
+      envFilePath: ['.env', '../../.env'],
+    }),
     PrismaModule,
     AuthModule,
     TunnelModule,

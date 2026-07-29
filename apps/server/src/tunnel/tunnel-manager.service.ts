@@ -16,6 +16,8 @@ interface PendingRequest {
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
   socket: WebSocket;
+  userId: string;
+  tunnelId: string;
   subdomain: string;
   method: string;
   path: string;
@@ -44,15 +46,25 @@ export class TunnelManagerService {
     this.logger.log(
       `[${payload.requestId}] ${pending.method} ${pending.subdomain}${pending.path} -> ${payload.status} (${durationMs}ms)`,
     );
-    this.requestLog.push({
-      requestId: payload.requestId,
-      subdomain: pending.subdomain,
-      method: pending.method,
-      path: pending.path,
-      status: payload.status,
-      durationMs,
-      timestamp: Date.now(),
-    });
+    this.requestLog
+      .push({
+        requestId: payload.requestId,
+        userId: pending.userId,
+        tunnelId: pending.tunnelId,
+        subdomain: pending.subdomain,
+        method: pending.method,
+        path: pending.path,
+        status: payload.status,
+        durationMs,
+        timestamp: Date.now(),
+      })
+      .catch((error) => {
+        this.logger.warn(
+          `Failed to persist request log ${payload.requestId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
     pending.resolve(payload);
   }
 
@@ -83,6 +95,8 @@ export class TunnelManagerService {
         reject,
         timer,
         socket: tunnel.socket,
+        userId: tunnel.userId,
+        tunnelId: tunnel.tunnelId,
         subdomain,
         method: input.method,
         path: input.path,

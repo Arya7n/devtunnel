@@ -1,13 +1,13 @@
 # DevTunnel — Current Status
 
 > **Living doc for agents & humans.** Update this whenever a phase slice lands.
-> Last updated: 2026-07-28
+> Last updated: 2026-07-29
 
 ## Phase
 
-**Phase 6 in progress / largely done: Authentication**
+**Phase 7 in progress: Persistence (tunnels + request logs in Postgres)**
 
-Local HTTP tunnel MVP (Phases 3–4) works. Dashboard request inspector exists. Auth (accounts, JWT, API keys, CLI login, protected WS + `/api`) is implemented.
+Auth (Phase 6) works. Tunnel open/close and HTTP request logs are now written to Postgres. Live active tunnels remain in-memory until Redis.
 
 ## What works now
 
@@ -17,11 +17,12 @@ Local HTTP tunnel MVP (Phases 3–4) works. Dashboard request inspector exists. 
 4. WebSocket `auth` must succeed before `register_tunnel`
 5. Dashboard `/api/*` requires Bearer JWT or API key; scoped to the user
 6. Local tunnel forward: `http://localhost:4000/t/<subdomain>/...`
+7. **Postgres `Tunnel` + `RequestLog`** — request history survives server restarts
+8. Stale `active` tunnels are closed on server startup
 
 ## What does NOT work yet
 
-- Redis-backed registry (still in-memory)
-- Persisting request logs / tunnel history in Postgres (users/keys only)
+- Redis-backed registry (still in-memory for live sockets)
 - Wildcard DNS + HTTPS (Caddy)
 - Custom domains, TCP tunnels, request replay
 
@@ -40,10 +41,9 @@ pnpm --filter @devtunnel/shared build
 pnpm --filter @devtunnel/protocol build
 pnpm --filter @devtunnel/server dev
 
-# CLI
-pnpm --filter @devtunnel/cli dev -- register
-pnpm --filter @devtunnel/cli dev -- login
-pnpm --filter @devtunnel/cli dev -- expose 3000 --subdomain myapp
+# CLI (use `cli` not `dev` for interactive login)
+pnpm --filter @devtunnel/cli cli -- login
+pnpm --filter @devtunnel/cli cli -- expose 3000 --subdomain myapp
 
 # Dashboard (login with same account)
 pnpm --filter @devtunnel/dashboard dev
@@ -54,6 +54,7 @@ pnpm --filter @devtunnel/dashboard dev
 | Area | Path |
 |------|------|
 | Prisma models | `apps/server/prisma/schema.prisma` |
+| Request/tunnel persistence | `apps/server/src/tunnel/request-log.service.ts` |
 | Auth service / routes | `apps/server/src/auth/` |
 | WS auth gate | `apps/server/src/tunnel/tunnel-ws.service.ts` |
 | Protected dashboard API | `apps/server/src/dashboard-api/` |
@@ -62,10 +63,9 @@ pnpm --filter @devtunnel/dashboard dev
 
 ## Next steps (in order)
 
-1. **Persist request logs / tunnels** in Postgres (extend Prisma models)
-2. **Redis registry** for multi-instance / restart survival
-3. **Phase 8 Deploy** — Caddy wildcard TLS + DNS `*.devtunnel.app`
-4. Refresh tokens rotation hardening / HTTP-only cookies for dashboard (optional)
+1. **Redis registry** for multi-instance / restart survival of live tunnels
+2. **Phase 8 Deploy** — Caddy wildcard TLS + DNS `*.devtunnel.app`
+3. Refresh tokens rotation hardening / HTTP-only cookies for dashboard (optional)
 
 ## Decisions / conventions
 
@@ -74,6 +74,8 @@ pnpm --filter @devtunnel/dashboard dev
 - CLI stores credentials in `~/.devtunnel/config.json` (API key preferred)
 - Dashboard stores access token in `localStorage`
 - Auth is for the **tunnel owner** (CLI + dashboard), not for public inbound traffic
+- Request logs capped at ~1000 rows per user
+- Active tunnel list in dashboard = live in-memory registry; request history = Postgres
 
 ## If context is lost
 
