@@ -1,17 +1,22 @@
 {
   "name": "@devtunnel/cli",
   "version": "0.0.1",
+  "description": "DevTunnel CLI — expose localhost securely",
   "private": true,
   "bin": {
     "devtunnel": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "cli": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format cjs --dts --clean",
+    "build": "tsup",
+    "build:exe": "pnpm build && node scripts/package-exe.cjs",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist release"
   },
   "dependencies": {
     "@devtunnel/protocol": "workspace:*",
@@ -23,6 +28,7 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/ws": "^8.5.13",
+    "postject": "^1.0.0-alpha.6",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

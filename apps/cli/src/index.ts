@@ -1,8 +1,9 @@
-#!/usr/bin/env node
 import { Command } from 'commander';
 import { loginCommand, logoutCommand, registerCommand } from './auth-commands';
+import { fetchActiveTunnels, fetchHealth } from './api';
 import { getCredential, loadConfig } from './config';
-import { exposeTunnel } from './tunnel-client';
+import { runExpose } from './expose-action';
+import { printStatus } from './output';
 
 const program = new Command();
 
@@ -56,28 +57,24 @@ program
   .option('-s, --subdomain <name>', 'Request a specific subdomain')
   .option('--server <url>', 'Tunnel server URL', process.env.DEVTUNNEL_SERVER_URL)
   .action(async (port: string, opts: { subdomain?: string; server?: string }) => {
-    const localPort = Number(port);
-    if (!Number.isInteger(localPort) || localPort < 1 || localPort > 65535) {
-      console.error('Port must be an integer between 1 and 65535');
-      process.exitCode = 1;
-      return;
-    }
-
     try {
-      const config = await loadConfig();
-      const token = getCredential(config);
-      if (!token) {
-        console.error('Not logged in. Run: devtunnel login');
-        process.exitCode = 1;
-        return;
-      }
+      await runExpose(port, opts);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+  });
 
-      await exposeTunnel({
-        localPort,
-        subdomain: opts.subdomain,
-        serverUrl: opts.server ?? config.serverUrl,
-        token,
-      });
+// ngrok-style alias: devtunnel http 3000
+program
+  .command('http')
+  .description('Alias for expose — forward HTTP traffic to a local port')
+  .argument('<port>', 'Local port to expose')
+  .option('-s, --subdomain <name>', 'Request a specific subdomain')
+  .option('--server <url>', 'Tunnel server URL', process.env.DEVTUNNEL_SERVER_URL)
+  .action(async (port: string, opts: { subdomain?: string; server?: string }) => {
+    try {
+      await runExpose(port, opts);
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
@@ -86,18 +83,81 @@ program
 
 program
   .command('status')
-  .description('Show login / config status')
+  .description('Show account, server health, and active tunnels')
   .action(async () => {
-    const config = await loadConfig();
-    if (!getCredential(config)) {
-      console.log('Not logged in.');
-      return;
+    try {
+      const config = await loadConfig();
+      if (!getCredential(config)) {
+        console.log('Not logged in. Run: devtunnel login');
+        return;
+      }
+
+      let serverOk = false;
+      let redis: string | undefined;
+      try {
+        const health = await fetchHealth();
+        serverOk = health.status === 'ok' || health.status === 'degraded';
+        redis = typeof health.redis === 'string' ? health.redis : undefined;
+      } catch {
+        serverOk = false;
+      }
+
+      let tunnels: Awaited<ReturnType<typeof fetchActiveTunnels>> = [];
+      if (serverOk) {
+        try {
+          tunnels = await fetchActiveTunnels();
+        } catch (error) {
+          console.error(error instanceof Error ? error.message : String(error));
+          process.exitCode = 1;
+          return;
+        }
+      }
+
+      printStatus({
+        email: config.email,
+        serverUrl: config.serverUrl,
+        credentialType: config.apiKey ? 'API key' : 'access token',
+        serverOk,
+        redis,
+        tunnels,
+      });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
     }
-    console.log(`Logged in as: ${config.email ?? '(unknown)'}`);
-    console.log(`Server: ${config.serverUrl}`);
-    console.log(`Credential: ${config.apiKey ? 'API key' : 'access token'}`);
   });
 
 // pnpm run forwards a bare "--" which would make Commander treat later flags as operands
 const argv = process.argv.filter((arg, index) => index < 2 || arg !== '--');
-program.parseAsync(argv);
+
+async function pauseOnWindowsDoubleClick(): Promise<void> {
+  // Double-clicking the .exe opens a console that closes immediately after help prints.
+  // Keep the window open so the user can read how to use it.
+  if (process.platform !== 'win32') return;
+  if (argv.length > 2) return;
+  console.log('');
+  console.log('This is a command-line app (like ngrok). Do not double-click it.');
+  console.log('Open Command Prompt / PowerShell / Terminal and run:');
+  console.log('');
+  console.log('  devtunnel login');
+  console.log('  devtunnel expose 3000 --subdomain myapi');
+  console.log('  devtunnel status');
+  console.log('');
+  console.log('Press Enter to close...');
+  await new Promise<void>((resolve) => {
+    process.stdin.resume();
+    process.stdin.once('data', () => resolve());
+  });
+}
+
+void (async () => {
+  try {
+    await program.parseAsync(argv);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  } finally {
+    await pauseOnWindowsDoubleClick();
+  }
+})();
+

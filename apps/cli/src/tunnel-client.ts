@@ -9,12 +9,14 @@ import {
 import { DEFAULT_SERVER_URL, DEFAULT_WS_PATH } from '@devtunnel/shared';
 import WebSocket from 'ws';
 import { proxyToLocalhost } from './localhost-proxy';
+import { formatRequestLog, printTunnelReady } from './output';
 
 export interface ExposeOptions {
   localPort: number;
   subdomain?: string;
   serverUrl?: string;
   token: string;
+  email?: string;
 }
 
 export async function exposeTunnel(options: ExposeOptions): Promise<void> {
@@ -23,7 +25,7 @@ export async function exposeTunnel(options: ExposeOptions): Promise<void> {
 
   console.log(`Connecting to ${wsUrl}...`);
 
-  await connectWithRetry(wsUrl, options);
+  await connectWithRetry(wsUrl, { ...options, serverUrl });
 }
 
 class FatalTunnelError extends Error {
@@ -131,12 +133,16 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
             }
             case 'tunnel_ready': {
               const ready = envelope.payload as TunnelReadyPayload;
-              console.log('');
-              console.log('Tunnel established');
-              console.log(`  Public URL : ${ready.publicUrl}`);
-              console.log(`  Forwarding : ${ready.publicUrl} -> http://127.0.0.1:${localPort}`);
-              console.log('');
-              console.log('Press Ctrl+C to stop.');
+              const subdomain =
+                options.subdomain ??
+                ready.publicUrl.replace(/\/$/, '').split('/').pop() ??
+                'tunnel';
+              printTunnelReady({
+                publicUrl: ready.publicUrl,
+                localPort,
+                subdomain,
+                email: options.email,
+              });
               break;
             }
             case 'tunnel_error': {
@@ -157,7 +163,13 @@ function runSession(wsUrl: string, options: ExposeOptions): Promise<void> {
                 const response = await proxyToLocalhost(localPort, request);
                 socket.send(serializeEnvelope(createEnvelope('http_response', response)));
                 console.log(
-                  `[${request.requestId}] ${request.method} ${request.path} -> ${response.status} (${Date.now() - startedAt}ms)`,
+                  formatRequestLog(
+                    request.requestId,
+                    request.method,
+                    request.path,
+                    response.status,
+                    Date.now() - startedAt,
+                  ),
                 );
               } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);

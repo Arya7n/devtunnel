@@ -16,7 +16,10 @@
     "clean": "turbo run clean && rimraf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.yml down"
+    "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "cli:build": "pnpm --filter @devtunnel/shared build && pnpm --filter @devtunnel/protocol build && pnpm --filter @devtunnel/cli build",
+    "cli:link": "pnpm cli:build && npm --prefix apps/cli link",
+    "cli:exe": "pnpm --filter @devtunnel/shared build && pnpm --filter @devtunnel/protocol build && pnpm --filter @devtunnel/cli build:exe"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
