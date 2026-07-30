@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type WebSocket from 'ws';
 import { TunnelRedisStore } from './tunnel-redis.store';
@@ -13,7 +13,7 @@ export interface ActiveTunnel {
 }
 
 @Injectable()
-export class TunnelRegistryService implements OnModuleInit {
+export class TunnelRegistryService implements OnApplicationBootstrap {
   private readonly logger = new Logger(TunnelRegistryService.name);
   private readonly bySubdomain = new Map<string, ActiveTunnel>();
   private readonly bySocket = new Map<WebSocket, ActiveTunnel>();
@@ -23,15 +23,22 @@ export class TunnelRegistryService implements OnModuleInit {
   constructor(private readonly redisStore: TunnelRedisStore) {}
 
   /**
+   * Runs after all OnModuleInit hooks (including Redis connect).
    * Single-node MVP: wipe leftover Redis tunnel keys from a previous crash/restart.
-   * CLI clients reconnect and re-claim subdomains.
    */
-  async onModuleInit(): Promise<void> {
-    const cleared = await this.redisStore.clearAll();
-    if (cleared > 0) {
-      this.logger.warn(`Cleared ${cleared} stale Redis tunnel key(s) on startup`);
-    } else {
-      this.logger.log('Redis tunnel registry is clean on startup');
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      const cleared = await this.redisStore.clearAll();
+      if (cleared > 0) {
+        this.logger.warn(`Cleared ${cleared} stale Redis tunnel key(s) on startup`);
+      } else {
+        this.logger.log('Redis tunnel registry is clean on startup');
+      }
+    } catch (error) {
+      this.logger.error(
+        `Redis tunnel registry init failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw error;
     }
   }
 

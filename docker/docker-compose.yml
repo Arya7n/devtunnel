@@ -21,8 +21,9 @@ services:
     image: redis:7-alpine
     container_name: devtunnel-redis
     restart: unless-stopped
+    # Host 6380 avoids clashing with other local Redis containers on 6379
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:

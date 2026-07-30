@@ -9,8 +9,8 @@ export const TUNNEL_HTTP_PREFIX = '/t';
 /** How long the server waits for the CLI to answer an HTTP forward */
 export const HTTP_FORWARD_TIMEOUT_MS = 30_000;
 
-/** Default Redis URL for local docker-compose */
-export const DEFAULT_REDIS_URL = 'redis://localhost:6379';
+/** Default Redis URL for local docker-compose (host maps 6380 → container 6379) */
+export const DEFAULT_REDIS_URL = 'redis://localhost:6380';
 
 /** Redis key prefix for live tunnel registry metadata */
 export const REDIS_TUNNEL_KEY_PREFIX = 'devtunnel:tunnel:';
