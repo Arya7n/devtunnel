@@ -19,7 +19,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     TunnelModule,
     DashboardApiModule,
-  ],
+  ], 
   controllers: [HealthController],
 })
 export class AppModule {}
