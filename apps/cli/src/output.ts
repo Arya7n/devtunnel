@@ -11,7 +11,7 @@ function label(text: string): string {
 }
 
 export function printTunnelReady(input: {
-  publicUrl: string;
+  publicUrl: string; 
   localPort: number;
   subdomain: string;
   email?: string;

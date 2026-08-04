@@ -15,7 +15,7 @@ program
 program
   .command('register')
   .description('Create a DevTunnel account')
-  .option('--server <url>', 'Tunnel server URL')
+  .option('--server <url>', 'Tunnel server URL') 
   .action(async (opts: { server?: string }) => {
     try {
       await registerCommand(opts.server);

@@ -9,7 +9,7 @@ interface AuthResponse {
 }
 
 interface ApiKeyResponse {
-  id: string;
+  id: string; 
   label: string;
   key: string;
 }
