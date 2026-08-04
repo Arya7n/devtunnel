@@ -15,7 +15,7 @@ export function printTunnelReady(input: {
   localPort: number;
   subdomain: string;
   email?: string;
-}): void {
+}): void { 
   console.log('');
   console.log(`${GREEN}✓ Tunnel online${RESET}`);
   console.log('');
