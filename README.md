@@ -27,7 +27,7 @@ docs/          Architecture & specifications
 ## Quick start
 
 ```bash
-# Requires Node 20+ and pnpm
+# Requires Node 20+ (see .nvmrc) and pnpm
 corepack enable
 pnpm install
 cp .env.example .env
