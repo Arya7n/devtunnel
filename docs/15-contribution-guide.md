@@ -25,6 +25,7 @@ Dashboard runs on `http://localhost:3300`.
 - Shared types in `@devtunnel/shared` / `@devtunnel/protocol`
 - Prefer small PRs aligned to a single phase/module
 - Do not commit secrets or `.env`
+- Format with `pnpm format`; lint with `pnpm lint` before opening a PR
 
 ## Branching
 
