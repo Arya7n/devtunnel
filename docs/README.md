@@ -9,10 +9,10 @@
 | 2 | [Requirements](./02-requirements.md) | Draft |
 | 3 | [Architecture](./03-architecture.md) | Draft |
 | 4 | [Database Design](./04-database-design.md) | Draft |
-| 5 | [API Documentation](./05-api-documentation.md) | Stub |
+| 5 | [API Documentation](./05-api-documentation.md) | Draft |
 | 6 | [CLI Specification](./06-cli-specification.md) | Draft |
 | 7 | [WebSocket Protocol](./07-websocket-protocol.md) | Draft |
-| 8 | [Authentication](./08-authentication.md) | Stub |
+| 8 | [Authentication](./08-authentication.md) | Draft |
 | 9 | [Security](./09-security.md) | Stub |
 | 10 | [Deployment](./10-deployment.md) | Stub |
 | 11 | [Scaling](./11-scaling.md) | Stub |
