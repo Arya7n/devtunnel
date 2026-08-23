@@ -15,6 +15,7 @@ export class HealthController {
     return {
       status: redisOk ? 'ok' : 'degraded',
       service: 'devtunnel-server',
+      checkedAt: new Date().toISOString(),
       redis: redisOk ? 'up' : 'down',
       tunnels: {
         local: this.registry.localCount(),

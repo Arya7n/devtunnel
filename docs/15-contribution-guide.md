@@ -39,7 +39,11 @@ pnpm --filter @devtunnel/cli cli -- expose 3000
 - Shared types in `@devtunnel/shared` / `@devtunnel/protocol`
 - Prefer small PRs aligned to a single phase/module
 - Do not commit secrets or `.env`
+<<<<<<< HEAD
 - Update [STATUS.md](./STATUS.md) when landing a phase slice
+=======
+- Format with `pnpm format`; lint with `pnpm lint` before opening a PR
+>>>>>>> 74d90831c73be8037b5a99a23abdb19386d85d0e
 
 ## Branching
 
