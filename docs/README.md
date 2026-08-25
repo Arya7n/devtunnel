@@ -13,10 +13,10 @@
 | 6 | [CLI Specification](./06-cli-specification.md) | Draft |
 | 7 | [WebSocket Protocol](./07-websocket-protocol.md) | Draft |
 | 8 | [Authentication](./08-authentication.md) | Draft |
-| 9 | [Security](./09-security.md) | Stub |
-| 10 | [Deployment](./10-deployment.md) | Stub |
-| 11 | [Scaling](./11-scaling.md) | Stub |
-| 12 | [Monitoring](./12-monitoring.md) | Stub |
-| 13 | [Testing](./13-testing.md) | Stub |
+| 9 | [Security](./09-security.md) | Draft |
+| 10 | [Deployment](./10-deployment.md) | Draft |
+| 11 | [Scaling](./11-scaling.md) | Draft |
+| 12 | [Monitoring](./12-monitoring.md) | Draft |
+| 13 | [Testing](./13-testing.md) | Draft |
 | 14 | [Roadmap](./14-roadmap.md) | Draft |
 | 15 | [Contribution Guide](./15-contribution-guide.md) | Draft |
