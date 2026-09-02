@@ -20,3 +20,5 @@
 | 13 | [Testing](./13-testing.md) | Stub |
 | 14 | [Roadmap](./14-roadmap.md) | Draft |
 | 15 | [Contribution Guide](./15-contribution-guide.md) | Draft |
+
+See also [docker/README.md](../docker/README.md) for local Postgres and Redis setup.
