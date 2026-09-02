@@ -28,3 +28,4 @@ pnpm docker:down
 
 - The Nest server **requires Redis** at boot (`REDIS_URL`).
 - After Postgres is up: `pnpm --filter @devtunnel/server prisma:push`
+- Verify services: `curl http://localhost:4000/health`
