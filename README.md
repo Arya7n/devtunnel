@@ -53,9 +53,11 @@ See [docs/](./docs/README.md) for vision, architecture, protocol, and roadmap.
 
 ## Status
 
-**Phase 3–4 — Local tunnel MVP.** CLI can expose a port; server forwards HTTP over WebSocket.
+**Phase 7 — Auth + Postgres + Redis live registry.** Tunnels, login, dashboard, and request logs work locally.
 
 See **[docs/STATUS.md](./docs/STATUS.md)** for what works, how to test, and what to build next.
+
+**Requires:** Docker (Postgres + Redis), `pnpm docker:up`, and `pnpm --filter @devtunnel/server prisma:push`.
 
 ### CLI (standalone exe)
 
