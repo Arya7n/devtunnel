@@ -16,3 +16,9 @@ pnpm --filter @devtunnel/dashboard dev
 ```
 
 Runs on `http://localhost:3300`.
+
+## Build
+
+```bash
+pnpm --filter @devtunnel/dashboard build
+```
