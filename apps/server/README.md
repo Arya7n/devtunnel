@@ -6,9 +6,9 @@ NestJS backend: tunnel engine, auth, and dashboard API.
 
 | Module | Role |
 |--------|------|
-| `auth/` | JWT, refresh tokens, API keys *(stub)* |
+| `auth/` | JWT, refresh tokens, API keys |
 | `tunnel/` | WebSocket tunnels, manager, registry, HTTP ingress |
-| `dashboard-api/` | REST endpoints for the UI *(stub)* |
+| `dashboard-api/` | REST endpoints for the UI |
 | `health/` | Liveness probe |
 
 ## Local MVP endpoints
