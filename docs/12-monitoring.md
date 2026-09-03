@@ -15,10 +15,14 @@ curl http://localhost:4000/health
 ```json
 {
   "status": "ok",
+  "service": "devtunnel-server",
+  "checkedAt": "2026-09-03T08:00:00.000Z",
   "redis": "up",
   "tunnels": { "local": 1, "redis": 1, "instanceId": "..." }
 }
 ```
+
+If Redis ping fails, `status` is `"degraded"` and `redis` is `"down"`.
 
 ## Planned
 
