@@ -16,7 +16,7 @@ docker compose -f docker/docker-compose.yml up -d
 | Service | Port | Credentials |
 |---------|------|-------------|
 | Postgres | 5432 | user/pass/db: `devtunnel` |
-| Redis | 6379 | none (local) |
+| Redis | 6380 (host) → 6379 (container) | none (local) |
 
 ## Stop
 

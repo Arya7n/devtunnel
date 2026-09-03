@@ -13,7 +13,7 @@ Auth works. Postgres stores users/keys/tunnels/request logs. Redis stores live s
 
 1. Register / login via REST (`/auth/*`) and dashboard UI
 2. JWT access + refresh tokens; `dt_...` API keys
-3. CLI: `register`, `login`, `logout`, `status`, `expose` (requires login)
+3. CLI: `register`, `login`, `logout`, `status`, `expose` / `http` (requires login)
 4. WebSocket `auth` must succeed before `register_tunnel`
 5. Dashboard `/api/*` requires Bearer JWT or API key; scoped to the user
 6. Local tunnel forward: `http://localhost:4000/t/<subdomain>/...`
@@ -31,7 +31,7 @@ Auth works. Postgres stores users/keys/tunnels/request logs. Redis stores live s
 ## Prerequisites (manual)
 
 ```bash
-cp .env.example .env          # ensure REDIS_URL=redis://localhost:6379
+cp .env.example .env          # ensure REDIS_URL=redis://localhost:6380
 pnpm docker:up                # Postgres + Redis — REQUIRED
 pnpm --filter @devtunnel/server prisma:push
 ```

@@ -23,7 +23,7 @@ pnpm --filter @devtunnel/dashboard dev
 | Server | 4000 |
 | Dashboard | 3300 |
 | Postgres | 5432 |
-| Redis | 6379 |
+| Redis | 6380 (host) → 6379 (container) |
 
 ## Phase 8 checklist (not done)
 
