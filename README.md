@@ -34,11 +34,12 @@ cp .env.example .env
 
 # Infrastructure
 pnpm docker:up
+pnpm --filter @devtunnel/server prisma:push
 
 # Run (separate terminals)
 pnpm --filter @devtunnel/server dev
 pnpm --filter @devtunnel/dashboard dev
-pnpm --filter @devtunnel/cli dev
+pnpm --filter @devtunnel/cli cli -- login
 ```
 
 | Service | URL |
