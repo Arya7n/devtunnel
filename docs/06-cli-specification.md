@@ -9,6 +9,7 @@ devtunnel register
 devtunnel login
 devtunnel logout
 devtunnel expose <port> [--subdomain <name>]
+devtunnel http <port> [--subdomain <name>]
 devtunnel status
 ```
 
