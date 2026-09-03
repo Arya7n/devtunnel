@@ -26,7 +26,7 @@ curl http://localhost:4000/t/<subdomain>/hello
   → HTTP response to curl
 ```
 
-CLI connects to `ws://localhost:4000/tunnel` and sends `register_tunnel`.
+CLI connects to `ws://localhost:4000/tunnel`, sends `auth` (JWT or API key), then `register_tunnel`.
 
 ## Monorepo layout
 
