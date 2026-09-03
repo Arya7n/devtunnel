@@ -27,6 +27,7 @@ NestJS backend: tunnel engine, auth, and dashboard API.
 | `DELETE /auth/api-keys/:id` | Revoke key (Bearer) |
 | `GET /api/tunnels` | Active tunnels (Bearer) |
 | `GET /api/requests` | Request log (Bearer) |
+| `DELETE /api/requests` | Clear request log (Bearer) |
 | `GET /api/stats` | Dashboard stats (Bearer) |
 | `WS /tunnel` | CLI control plane |
 | `ALL /t/:subdomain/*` | Public HTTP ingress → forwarded to CLI |
