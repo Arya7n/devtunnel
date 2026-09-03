@@ -29,7 +29,8 @@ Connection: `ws(s)://<server>/tunnel`
 
 | type | payload |
 |------|---------|
-| `auth_ok` / `auth_error` | — |
+| `auth_ok` | `{ userId, email }` |
+| `auth_error` | `{ message }` |
 | `tunnel_ready` | `{ tunnelId, subdomain, publicUrl }` |
 | `tunnel_error` | `{ message }` |
 | `http_request` | `{ requestId, method, path, headers, bodyBase64? }` |
@@ -49,5 +50,6 @@ Bodies are base64 to safely carry binary over JSON frames (MVP). Streaming may c
 
 ## Local MVP notes
 
-- `auth` is accepted with any token and answered with `auth_ok` (real auth in Phase 6)
+- `auth` validates a JWT or `dt_...` API key; success → `auth_ok` with `{ userId, email }`; failure → `auth_error` then the socket closes
+- `register_tunnel` is rejected until `auth` succeeds
 - `tunnel_ready.publicUrl` looks like `http://localhost:4000/t/<subdomain>` until DNS/HTTPS exists
